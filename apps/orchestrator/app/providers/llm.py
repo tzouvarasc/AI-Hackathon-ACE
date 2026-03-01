@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import time
 
 import httpx
@@ -127,38 +128,56 @@ class LLMProvider:
             "Content-Type": "application/json",
         }
 
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
-                response = await client.post(url, json=payload, headers=headers)
-                response.raise_for_status()
-                data = response.json()
+        last_exc: Exception | None = None
+        for attempt in range(2):
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+                    response = await client.post(url, json=payload, headers=headers)
+                    response.raise_for_status()
+                    data = response.json()
 
-            content = (
-                data.get("choices", [{}])[0]
-                .get("message", {})
-                .get("content", "")
-            )
-            if isinstance(content, list):
-                parts: list[str] = []
-                for item in content:
-                    if not isinstance(item, dict):
-                        continue
-                    text = item.get("text") or item.get("content")
-                    if isinstance(text, str) and text.strip():
-                        parts.append(text.strip())
-                reply = "\n".join(parts).strip()
-            else:
-                reply = str(content or "").strip()
+                content = (
+                    data.get("choices", [{}])[0]
+                    .get("message", {})
+                    .get("content", "")
+                )
+                if isinstance(content, list):
+                    parts: list[str] = []
+                    for item in content:
+                        if not isinstance(item, dict):
+                            continue
+                        text = item.get("text") or item.get("content")
+                        if isinstance(text, str) and text.strip():
+                            parts.append(text.strip())
+                    reply = "\n".join(parts).strip()
+                else:
+                    reply = str(content or "").strip()
 
-            if not reply:
-                reply = self._fallback_reply(transcript, locale)
+                if not reply:
+                    reply = self._fallback_reply(transcript, locale)
 
-            elapsed_ms = int((time.perf_counter() - start) * 1000)
-            return reply, max(elapsed_ms, 220)
-        except Exception as exc:  # pragma: no cover - integration path
-            print(f"[llm] Azure generation failed: {exc}")
-            elapsed_ms = int((time.perf_counter() - start) * 1000)
-            return self._fallback_reply(transcript, locale), max(elapsed_ms, 220)
+                elapsed_ms = int((time.perf_counter() - start) * 1000)
+                return reply, max(elapsed_ms, 220)
+            except httpx.HTTPStatusError as exc:
+                last_exc = exc
+                status = exc.response.status_code
+                if status in {408, 429, 500, 502, 503, 504} and attempt == 0:
+                    await asyncio.sleep(0.35)
+                    continue
+                break
+            except (httpx.ConnectError, httpx.ReadTimeout, httpx.WriteTimeout) as exc:
+                last_exc = exc
+                if attempt == 0:
+                    await asyncio.sleep(0.35)
+                    continue
+                break
+            except Exception as exc:  # pragma: no cover - integration path
+                last_exc = exc
+                break
+
+        print(f"[llm] Azure generation failed: {last_exc}")
+        elapsed_ms = int((time.perf_counter() - start) * 1000)
+        return self._fallback_reply(transcript, locale), max(elapsed_ms, 220)
 
     @staticmethod
     def _is_greek(locale: str) -> bool:
@@ -180,7 +199,15 @@ class LLMProvider:
                 return "Είμαι εδώ μαζί σας. Πάρτε μια αργή ανάσα. Θέλετε να ειδοποιήσω την οικογένειά σας;"
             if "ποδι" in lowered or "πονά" in lowered or "πονος" in lowered:
                 return "Λυπάμαι που πονάτε. Ο πόνος είναι έντονος τώρα ή ήπιος; Θέλετε να κάνουμε ένα μικρό check;"
-            return "Ευχαριστώ που το μοιραστήκατε. Πώς νιώθετε αυτή τη στιγμή; Είμαι εδώ να βοηθήσω βήμα-βήμα."
+            if lowered in {"ναι", "οχι", "όχι", "καλα", "καλά"}:
+                return "Σε ακούω. Θέλετε να μου πείτε δυο λόγια παραπάνω για το πώς περάσατε σήμερα;"
+            generic_options = [
+                "Είμαι εδώ για εσάς. Πώς πήγε η ημέρα σας μέχρι τώρα;",
+                "Σας ακούω προσεκτικά. Τι ήταν το πιο δύσκολο σήμερα;",
+                "Ευχαριστώ που το μοιράζεστε. Θέλετε να συνεχίσουμε με ένα μικρό βήμα;",
+            ]
+            idx = sum(ord(char) for char in lowered) % len(generic_options)
+            return generic_options[idx]
 
         if med_hit:
             return (

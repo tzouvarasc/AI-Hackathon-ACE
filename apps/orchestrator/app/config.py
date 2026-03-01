@@ -8,7 +8,8 @@ from dotenv import load_dotenv
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-load_dotenv(_REPO_ROOT / ".env", override=False)
+# Ensure orchestrator always uses project .env values (avoids stale shell exports).
+load_dotenv(_REPO_ROOT / ".env", override=True)
 
 
 def _as_bool(value: str, default: bool = False) -> bool:

@@ -119,7 +119,7 @@ def build_mac_voice_chat_html(*, server_stt_enabled: bool) -> str:
         <div id=\"log\" class=\"log\"></div>
 
         <div class=\"warn\">
-          Λειτουργία κλήσης: Browser STT (Safari/Chrome) με auto-fallback σε Server STT όταν είναι διαθέσιμος.
+          Λειτουργία κλήσης: Browser STT (Safari/Chrome). Server STT ενεργοποιείται μόνο αν είναι πλήρως ρυθμισμένο.
         </div>
       </div>
     </div>
@@ -158,6 +158,15 @@ def build_mac_voice_chat_html(*, server_stt_enabled: bool) -> str:
       let serverChunkAbort = false;
       let serverSttDisabled = false;
       let noServerSttNoticeShown = false;
+      let noTranscriptCycles = 0;
+      let restartSttTimer = null;
+      let silenceHintLogTs = 0;
+      let lastAssistantNorm = '';
+      let lastAssistantTs = 0;
+      const MIN_RESTART_DELAY_MS = 400;
+      const MAX_RESTART_DELAY_MS = 1800;
+      const SILENCE_HINT_INTERVAL_MS = 7000;
+      const AUTO_SWITCH_TO_SERVER_STT = false;
 
       function serverSttUsable() {
         return SERVER_STT_ENABLED && !serverSttDisabled;
@@ -206,23 +215,47 @@ def build_mac_voice_chat_html(*, server_stt_enabled: bool) -> str:
       function armSilenceHintTimer() {
         clearSilenceHintTimer();
         if (!callModeActive) return;
+
         silenceHintTimer = window.setTimeout(() => {
           if (!callModeActive) return;
+
+          const browserBusy =
+            pauseRecognitionForAudio ||
+            processingTurns ||
+            pendingTurns.length > 0 ||
+            serverChunkMode ||
+            !isBrowserListening;
+
+          if (browserBusy) {
+            armSilenceHintTimer();
+            return;
+          }
+
           silenceHints += 1;
-          addStage('Δεν άκουσα ακόμη καθαρό turn. Μιλήστε λίγο πιο αργά και καθαρά.');
+          const now = Date.now();
+          if (now - silenceHintLogTs >= SILENCE_HINT_INTERVAL_MS - 1000) {
+            addStage('Δεν άκουσα ακόμη καθαρό turn. Μιλήστε λίγο πιο αργά και καθαρά.');
+            silenceHintLogTs = now;
+          }
+
           if (silenceHints >= 2 && !serverSttUsable() && !noServerSttNoticeShown) {
             addStage('Server STT δεν είναι διαθέσιμο. Ελέγξτε μικρόφωνο Safari ή δοκιμάστε Chrome.');
             noServerSttNoticeShown = true;
           }
+
           const browserHasCandidate =
             Boolean(cycleFinalTranscript.trim()) ||
             Boolean(cycleInterimTranscript.trim()) ||
             pendingTurns.length > 0 ||
             processingTurns;
-          const forcedSwitchAfterLongSilence = silenceHints >= 4;
-          const shouldSwitchToServer = !browserHasCandidate || forcedSwitchAfterLongSilence;
 
-          if (silenceHints >= 2 && serverSttUsable() && !serverChunkMode && shouldSwitchToServer) {
+          if (
+            AUTO_SWITCH_TO_SERVER_STT &&
+            silenceHints >= 3 &&
+            serverSttUsable() &&
+            !serverChunkMode &&
+            !browserHasCandidate
+          ) {
             addStage('Auto-switch σε server STT mode γιατί ο browser STT δεν έδωσε transcript.');
             if (recognition && isBrowserListening) {
               try {
@@ -236,12 +269,33 @@ def build_mac_voice_chat_html(*, server_stt_enabled: bool) -> str:
             });
             return;
           }
+
           armSilenceHintTimer();
-        }, 3000);
+        }, SILENCE_HINT_INTERVAL_MS);
       }
 
       async function sleepMs(ms) {
         return await new Promise((resolve) => window.setTimeout(resolve, ms));
+      }
+
+      function clearRestartTimer() {
+        if (restartSttTimer) {
+          window.clearTimeout(restartSttTimer);
+          restartSttTimer = null;
+        }
+      }
+
+      function scheduleBrowserRestart(delayMs) {
+        clearRestartTimer();
+        restartSttTimer = window.setTimeout(() => {
+          restartSttTimer = null;
+          if (!callModeActive || pauseRecognitionForAudio || isBrowserListening || serverChunkMode) {
+            return;
+          }
+          startBrowserSpeech().catch((err) => {
+            addMessage('system', 'System:', `Επανεκκίνηση STT απέτυχε: ${err.message || err}`);
+          });
+        }, Math.max(250, Math.round(delayMs || MIN_RESTART_DELAY_MS)));
       }
 
       function updateControls() {
@@ -250,23 +304,69 @@ def build_mac_voice_chat_html(*, server_stt_enabled: bool) -> str:
       }
 
       function normalizeTranscript(text) {
-        return String(text || '').toLowerCase().replace(/\\s+/g, ' ').trim();
+        return String(text || '').toLowerCase().replace(/\s+/g, ' ').trim();
+      }
+
+      function tokenizeTranscript(text) {
+        return normalizeTranscript(text)
+          .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+          .split(/\s+/)
+          .map((token) => token.trim())
+          .filter((token) => token.length > 1);
+      }
+
+      function calculateTokenOverlap(a, b) {
+        const aTokens = tokenizeTranscript(a);
+        const bTokens = tokenizeTranscript(b);
+        if (!aTokens.length || !bTokens.length) return 0;
+
+        const aSet = new Set(aTokens);
+        let shared = 0;
+        for (const token of bTokens) {
+          if (aSet.has(token)) {
+            shared += 1;
+          }
+        }
+        return shared / Math.max(1, Math.min(aSet.size, bTokens.length));
+      }
+
+      function rememberAssistantUtterance(text) {
+        lastAssistantNorm = normalizeTranscript(text);
+        lastAssistantTs = Date.now();
+      }
+
+      function isLikelyAssistantEcho(normText) {
+        if (!normText || !lastAssistantNorm) return false;
+        const ageMs = Date.now() - lastAssistantTs;
+        if (ageMs > 8000) return false;
+
+        if (lastAssistantNorm.includes(normText) || normText.includes(lastAssistantNorm)) {
+          return true;
+        }
+
+        const overlap = calculateTokenOverlap(lastAssistantNorm, normText);
+        return overlap >= 0.72;
       }
 
       function shouldDropTranscript(text) {
         const norm = normalizeTranscript(text);
-        if (!norm) return true;
+        if (!norm) return { drop: true, reason: 'empty' };
+
+        if (isLikelyAssistantEcho(norm)) {
+          return { drop: true, reason: 'echo' };
+        }
 
         const now = Date.now();
         if (norm === lastTranscriptNorm && now - lastTranscriptTs < 4500) {
-          return true;
+          return { drop: true, reason: 'duplicate' };
         }
         lastTranscriptNorm = norm;
         lastTranscriptTs = now;
-        return false;
+        return { drop: false, reason: '' };
       }
 
       async function postJson(path, payload) {
+
         const response = await fetch(path, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -381,6 +481,7 @@ def build_mac_voice_chat_html(*, server_stt_enabled: bool) -> str:
 
       async function playOpeningGreeting() {
         addMessage('bot', 'Thalpo:', CALL_OPENING_GREETING);
+        rememberAssistantUtterance(CALL_OPENING_GREETING);
         pauseRecognitionForAudio = true;
         addStage('Αναπαραγωγή αρχικού χαιρετισμού...');
         let played = false;
@@ -427,6 +528,7 @@ def build_mac_voice_chat_html(*, server_stt_enabled: bool) -> str:
         const response = await postJson('/v1/turns/process', payload);
         const assistantText = (response.assistant_text || '').trim() || '(χωρίς απάντηση)';
         addMessage('bot', 'Thalpo:', assistantText);
+        rememberAssistantUtterance(assistantText);
 
         const ms = response.latency_ms && response.latency_ms.total;
         if (typeof ms === 'number') {
@@ -441,24 +543,32 @@ def build_mac_voice_chat_html(*, server_stt_enabled: bool) -> str:
 
         const audioUrl = toAudioUrl(response.audio_chunk_ref || '');
         let played = false;
+
+        if (callModeActive) {
+          clearRestartTimer();
+          noTranscriptCycles = 0;
+          pauseRecognitionForAudio = true;
+          if (recognition && isBrowserListening) {
+            try {
+              recognition.stop();
+            } catch (_) {
+              // no-op
+            }
+          }
+        }
+
         if (audioUrl) {
           try {
-            if (callModeActive) {
-              pauseRecognitionForAudio = true;
-            }
             played = await playAudioUrl(audioUrl);
             if (!played) {
               addMessage('system', 'Audio:', 'Η αναπαραγωγή MP3 απέτυχε. Θα χρησιμοποιήσω browser φωνή.');
             }
-          } catch (err) {
+          } catch (_) {
             played = false;
           }
         }
 
         if (!played) {
-          if (callModeActive) {
-            pauseRecognitionForAudio = true;
-          }
           addStage('Fallback σε browser TTS...');
           const browserSpoken = await speakWithBrowserTTS(assistantText);
           if (!browserSpoken) {
@@ -473,7 +583,7 @@ def build_mac_voice_chat_html(*, server_stt_enabled: bool) -> str:
         if (callModeActive && browserSpeechSupported() && !serverChunkMode) {
           pauseRecognitionForAudio = false;
           addStage('Επιστροφή σε ακρόαση (STT)...');
-          await startBrowserSpeech();
+          scheduleBrowserRestart(350);
           armSilenceHintTimer();
         }
       }
@@ -623,11 +733,19 @@ def build_mac_voice_chat_html(*, server_stt_enabled: bool) -> str:
       function queueTranscript(text) {
         const transcript = String(text || '').trim();
         if (!transcript) return;
-        if (shouldDropTranscript(transcript)) {
-          addStage('Αγνόηση διπλού transcript (dedupe).');
+
+        const dropDecision = shouldDropTranscript(transcript);
+        if (dropDecision.drop) {
+          if (dropDecision.reason === 'echo') {
+            addStage('Αγνόηση transcript (πιθανό echo από τη φωνή της Thalpo).');
+          } else if (dropDecision.reason === 'duplicate') {
+            addStage('Αγνόηση διπλού transcript (dedupe).');
+          }
           return;
         }
 
+        noTranscriptCycles = 0;
+        clearRestartTimer();
         clearSilenceHintTimer();
         addMessage('system', 'STT:', transcript);
         pendingTurns.push(transcript);
@@ -717,7 +835,6 @@ def build_mac_voice_chat_html(*, server_stt_enabled: bool) -> str:
 
           recognition.onerror = (event) => {
             if (event.error === 'aborted' || event.error === 'no-speech') {
-              addStage(`Browser STT transient: ${event.error}`);
               return;
             }
             addMessage('system', 'STT:', `Browser STT σφάλμα: ${event.error || 'unknown'}`);
@@ -748,24 +865,27 @@ def build_mac_voice_chat_html(*, server_stt_enabled: bool) -> str:
 
             if (transcript) {
               addStage('Browser STT cycle ολοκληρώθηκε, βρέθηκε transcript.');
+              noTranscriptCycles = 0;
+              clearRestartTimer();
               queueTranscript(transcript);
               return;
             }
 
             if (!pauseRecognitionForAudio) {
-              addStage('Δεν βρέθηκε transcript, επανεκκίνηση STT.');
-              window.setTimeout(() => {
-                if (callModeActive) {
-                  startBrowserSpeech().catch((err) => {
-                    addMessage('system', 'System:', `Επανεκκίνηση STT απέτυχε: ${err.message || err}`);
-                  });
-                }
-              }, 200);
+              noTranscriptCycles += 1;
+              const restartDelay = Math.min(
+                MIN_RESTART_DELAY_MS + (noTranscriptCycles - 1) * 250,
+                MAX_RESTART_DELAY_MS
+              );
+              if (noTranscriptCycles === 1 || noTranscriptCycles % 3 === 0) {
+                addStage(`Δεν βρέθηκε transcript, επανεκκίνηση STT (${restartDelay}ms).`);
+              }
+              scheduleBrowserRestart(restartDelay);
             }
           };
         }
 
-        if (isBrowserListening) return;
+        if (isBrowserListening || pauseRecognitionForAudio) return;
         cycleFinalTranscript = '';
         cycleInterimTranscript = '';
         recognition.start();
@@ -831,6 +951,11 @@ def build_mac_voice_chat_html(*, server_stt_enabled: bool) -> str:
         callModeActive = true;
         callStartedAt = Date.now();
         silenceHints = 0;
+        silenceHintLogTs = 0;
+        noTranscriptCycles = 0;
+        clearRestartTimer();
+        lastAssistantNorm = '';
+        lastAssistantTs = 0;
         serverSttDisabled = false;
         noServerSttNoticeShown = false;
         serverChunkAbort = false;
@@ -862,6 +987,8 @@ def build_mac_voice_chat_html(*, server_stt_enabled: bool) -> str:
         callStartedAt = 0;
         serverChunkAbort = true;
         pendingTurns = [];
+        noTranscriptCycles = 0;
+        clearRestartTimer();
         clearSilenceHintTimer();
 
         if (isRecording) {

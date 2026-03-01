@@ -48,6 +48,19 @@ class MacGreetingRequest(BaseModel):
     text: str = "Γεια σας! Είμαι η Θάλπω. Θα σας παίρνω τηλέφωνο κάθε μέρα για να τα λέμε λίγο. Πώς σας λένε;"
 
 
+@app.on_event("startup")
+async def on_startup() -> None:
+    print(
+        "[orchestrator] llm_config "
+        f"provider={settings.llm_provider} "
+        f"openai_model={settings.openai_model} "
+        f"azure_deployment={settings.azure_openai_deployment or '-'} "
+        f"azure_endpoint_set={bool(settings.azure_openai_endpoint)} "
+        f"openai_key_set={bool(settings.openai_api_key)} "
+        f"azure_key_set={bool(settings.azure_openai_api_key)}"
+    )
+
+
 @app.on_event("shutdown")
 async def on_shutdown() -> None:
     await pipeline.close()
@@ -60,7 +73,8 @@ async def health() -> dict[str, str]:
 
 @app.get("/v1/mac/voice-chat", response_class=HTMLResponse)
 async def mac_voice_chat() -> HTMLResponse:
-    server_stt_enabled = bool(settings.openai_api_key) or _azure_stt_available()
+    # Prefer explicit Azure STT wiring; avoid enabling server STT by accident from stale OPENAI key.
+    server_stt_enabled = _azure_stt_available()
     return HTMLResponse(content=build_mac_voice_chat_html(server_stt_enabled=server_stt_enabled))
 
 
@@ -86,20 +100,7 @@ async def mac_transcribe(
 
     try:
         async with httpx.AsyncClient(timeout=max(settings.request_timeout_seconds, 30.0)) as client:
-            if settings.openai_api_key:
-                provider = "openai"
-                response = await client.post(
-                    "https://api.openai.com/v1/audio/transcriptions",
-                    data={
-                        "model": settings.openai_transcribe_model,
-                        "language": language,
-                    },
-                    files=files,
-                    headers={"Authorization": f"Bearer {settings.openai_api_key}"},
-                )
-                response.raise_for_status()
-                payload = response.json()
-            elif _azure_stt_available():
+            if _azure_stt_available():
                 provider = "azure"
                 azure_endpoint = settings.azure_openai_endpoint.rstrip("/")
                 azure_url = (
@@ -111,6 +112,19 @@ async def mac_transcribe(
                     data={"language": language},
                     files=files,
                     headers={"api-key": settings.azure_openai_api_key},
+                )
+                response.raise_for_status()
+                payload = response.json()
+            elif settings.openai_api_key:
+                provider = "openai"
+                response = await client.post(
+                    "https://api.openai.com/v1/audio/transcriptions",
+                    data={
+                        "model": settings.openai_transcribe_model,
+                        "language": language,
+                    },
+                    files=files,
+                    headers={"Authorization": f"Bearer {settings.openai_api_key}"},
                 )
                 response.raise_for_status()
                 payload = response.json()
