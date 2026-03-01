@@ -1,0 +1,8 @@
+[project]
+name = "thalpo-v1"
+version = "0.1.0"
+description = "Thalpo multi-agent voice companion MVP scaffold"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

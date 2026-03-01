@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: thalpo
+      POSTGRES_PASSWORD: thalpo
+      POSTGRES_DB: thalpo
+    ports:
+      - "5432:5432"
+    volumes:
+      - thalpo_postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  analysis-engine:
+    build:
+      context: ..
+      dockerfile: apps/analysis_engine/Dockerfile
+    env_file:
+      - ./env/analysis-engine.env.example
+    ports:
+      - "8001:8001"
+
+  alert-engine:
+    build:
+      context: ..
+      dockerfile: apps/alert_engine/Dockerfile
+    env_file:
+      - ./env/alert-engine.env.example
+    ports:
+      - "8002:8002"
+
+  family-api:
+    build:
+      context: ..
+      dockerfile: apps/family_api/Dockerfile
+    env_file:
+      - ./env/family-api.env.example
+    ports:
+      - "8003:8003"
+    depends_on:
+      - postgres
+
+  orchestrator:
+    build:
+      context: ..
+      dockerfile: apps/orchestrator/Dockerfile
+    env_file:
+      - ./env/orchestrator.env.example
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+      - analysis-engine
+      - alert-engine
+      - family-api
+
+  family-dashboard:
+    build:
+      context: ..
+      dockerfile: apps/family_dashboard/Dockerfile
+    env_file:
+      - ./env/family-dashboard.env.example
+    ports:
+      - "5173:5173"
+    depends_on:
+      - family-api
+
+volumes:
+  thalpo_postgres_data:
