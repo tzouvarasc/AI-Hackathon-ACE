@@ -752,6 +752,9 @@ h1, h2, h3, h4,
   font-size: 14px;
   cursor: pointer;
   transition: all 0.18s;
+  display: flex;
+  align-items: center;
+  gap: 9px;
 }
 
 .rail-item:hover { background: var(--amber-soft); color: var(--text); }
@@ -901,6 +904,9 @@ h1, h2, h3, h4,
 .panel-title-row h2,
 .distribution-chart h3,
 .memory-archive-panel h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
   color: var(--text);
   font-size: 18px;
@@ -935,7 +941,19 @@ h1, h2, h3, h4,
   gap: 12px;
 }
 
-.metric { padding: 14px 16px; }
+.metric { padding: 18px 18px 16px; }
+
+.kpi-icon-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: var(--amber-soft);
+  border: 1px solid rgba(245,158,11,0.20);
+  display: grid;
+  place-items: center;
+  margin-bottom: 10px;
+  color: var(--amber);
+}
 
 .metric h3 {
   margin: 0;

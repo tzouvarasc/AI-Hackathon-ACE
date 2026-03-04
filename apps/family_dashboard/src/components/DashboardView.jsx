@@ -1,6 +1,38 @@
 import { useMemo, useState } from 'react'
 import logoImg from '../assets/logo.png'
 
+/* ── inline SVG icon set ─────────────────────────── */
+function Icon({ d, size = 18, color = 'currentColor', fill = 'none', strokeWidth = 1.8 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={color}
+      strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <path d={d} />
+    </svg>
+  )
+}
+
+const ICONS = {
+  health:    'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z',
+  bell:      'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0',
+  chart:     'M18 20V10M12 20V4M6 20v-6',
+  archive:   'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
+  brain:     'M9.5 2a2.5 2.5 0 0 1 5 0c1.5.2 3.5 1.2 4 4 .6 3-.5 5.5-2 7-1 1-1.5 2.5-1.5 4H9c0-1.5-.5-3-1.5-4-1.5-1.5-2.6-4-2-7 .5-2.8 2.5-3.8 4-4z',
+  emotion:   'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z',
+  smile:     'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM8 13s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01',
+  clock:     'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0-14v4l3 3',
+  shield:    'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+  mic:       'M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3zm6 10c0 3.31-2.69 6-6 6s-6-2.69-6-6H4c0 3.85 2.77 7.08 6.5 7.73V22h3v-3.27C17.23 18.08 20 14.85 20 11h-2z',
+  pill:      'M10.5 3.5a6 6 0 0 1 6 6v1.5a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6v-1.5a6 6 0 0 1 6-6h1zm-4 6.5h10M7 7l10 10',
+  moon:      'M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z',
+  droplet:   'M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z',
+  activity:  'M22 12h-4l-3 9L9 3l-3 9H2',
+  users:     'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  alert:     'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01',
+  refresh:   'M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15',
+  food:      'M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8zm4-7v7M10 1v7M14 1v7',
+  dumbbell:  'M6.5 6.5h11M6.5 17.5h11M3 3v4M3 17v4M21 3v4M21 17v4M3 5h2M19 5h2M3 19h2M19 19h2',
+}
+
 function formatValue(value) {
   if (value === null || value === undefined || value === '') {
     return 'Μ/Δ'
@@ -275,16 +307,16 @@ function MemoryArchive({ history, filter, onFilterChange }) {
 }
 
 const FEATURE_CARD_ORDER = [
-  ['voice_biomarkers_100', 'Βιοδείκτες φωνής'],
-  ['cognitive_score_100', 'Γνωστικό σκορ'],
-  ['cognitive_gym_100', 'Νοητική ενδυνάμωση'],
-  ['meds_tracker', 'Φάρμακα'],
-  ['sleep_quality', 'Ύπνος'],
-  ['nutrition_status', 'Διατροφή'],
-  ['hydration_status', 'Ενυδάτωση'],
-  ['physio_engagement', 'Φυσιοθεραπεία'],
-  ['social_connection', 'Κοινωνική επαφή'],
-  ['active_risk_flags', 'Σήματα κινδύνου'],
+  ['voice_biomarkers_100', 'Βιοδείκτες φωνής',  'mic'],
+  ['cognitive_score_100',  'Γνωστικό σκορ',      'brain'],
+  ['cognitive_gym_100',    'Νοητική ενδυνάμωση', 'dumbbell'],
+  ['meds_tracker',         'Φάρμακα',             'pill'],
+  ['sleep_quality',        'Ύπνος',               'moon'],
+  ['nutrition_status',     'Διατροφή',            'food'],
+  ['hydration_status',     'Ενυδάτωση',           'droplet'],
+  ['physio_engagement',    'Φυσιοθεραπεία',       'activity'],
+  ['social_connection',    'Κοινωνική επαφή',     'users'],
+  ['active_risk_flags',    'Σήματα κινδύνου',     'alert'],
 ]
 
 function getHistoryTone(item) {
@@ -297,8 +329,6 @@ function getHistoryTone(item) {
 export default function DashboardView({
   profile,
   elderName,
-  elderlyId,
-  setElderlyId,
   snapshot,
   history,
   insights,
@@ -365,10 +395,10 @@ export default function DashboardView({
         </div>
 
         <nav className="rail-nav" aria-label="Πλοήγηση">
-          <button type="button" className="rail-item active">Εικόνα Υγείας</button>
-          <button type="button" className="rail-item">Ειδοποιήσεις</button>
-          <button type="button" className="rail-item">Δείκτες Ευεξίας</button>
-          <button type="button" className="rail-item">Ημερολόγιο</button>
+          <button type="button" className="rail-item active"><Icon d={ICONS.health} size={16} />Εικόνα Υγείας</button>
+          <button type="button" className="rail-item"><Icon d={ICONS.bell} size={16} />Ειδοποιήσεις</button>
+          <button type="button" className="rail-item"><Icon d={ICONS.chart} size={16} />Δείκτες Ευεξίας</button>
+          <button type="button" className="rail-item"><Icon d={ICONS.archive} size={16} />Αρχείο Συνομιλιών</button>
         </nav>
 
         <div className="rail-stat-grid">
@@ -383,9 +413,9 @@ export default function DashboardView({
         </div>
 
         {onBack && (
-          <button className="secondary" onClick={onBack}>← Όλοι οι ηλικιωμένοι</button>
+          <button className="secondary" onClick={onBack}><Icon d="M15 18l-6-6 6-6" size={15} />Όλοι οι ηλικιωμένοι</button>
         )}
-        <button className="secondary" onClick={onLogout}>Αποσύνδεση</button>
+        <button className="secondary" onClick={onLogout}><Icon d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" size={15} />Αποσύνδεση</button>
       </aside>
 
       {/* ── Main ────────────────────────────────── */}
@@ -399,6 +429,12 @@ export default function DashboardView({
             <p className="subtext">
               Παρακολουθείτε σε πραγματικό χρόνο την υγεία και την καθημερινότητα του αγαπημένου σας.
             </p>
+          </div>
+          <div className="command-actions">
+            <span className="role-chip">{profile.role}</span>
+            <button type="button" className="secondary" onClick={onRefresh} disabled={loading}>
+              {loading ? 'Ανανέωση...' : 'Ανανέωση Δεδομένων'}
+            </button>
           </div>
 
         </header>
@@ -421,7 +457,7 @@ export default function DashboardView({
 
           <article className="panel trend-panel">
             <div className="panel-title-row">
-              <h2>Τάσεις Ευεξίας</h2>
+              <h2><Icon d={ICONS.activity} size={20} />Τάσεις Ευεξίας</h2>
               <p className="subtext">Τελευταίοι 14 γύροι</p>
             </div>
             <ClinicalTrendChart emotionSeries={emotionSeries} cognitiveSeries={cognitiveSeries} />
@@ -429,7 +465,7 @@ export default function DashboardView({
 
           <article className="panel bento medical-visual-panel">
             <div className="panel-title-row">
-              <h2>Σύνοψη Περιόδου</h2>
+              <h2><Icon d={ICONS.shield} size={20} />Σύνοψη Περιόδου</h2>
               <p className="subtext">Τελευταίες 30 μέρες</p>
             </div>
             <p className="subtext" style={{ lineHeight: 1.7 }}>
@@ -452,21 +488,25 @@ export default function DashboardView({
         {/* KPI grid */}
         <section className="glance-grid">
           <article className="panel metric">
+            <div className="kpi-icon-wrap"><Icon d={ICONS.brain} size={22} /></div>
             <h3>Γνωστικό</h3>
             <p className="kpi-value">{formatValue(snapshot?.cognitive_score)}</p>
             <span className="kpi-caption">Τρέχον σκορ</span>
           </article>
           <article className="panel metric">
+            <div className="kpi-icon-wrap"><Icon d={ICONS.emotion} size={22} /></div>
             <h3>Συναίσθημα</h3>
             <p className="kpi-value">{formatValue(snapshot?.emotion_score)}</p>
             <span className="kpi-caption">Συναισθηματικό σήμα</span>
           </article>
           <article className="panel metric">
+            <div className="kpi-icon-wrap"><Icon d={ICONS.smile} size={22} /></div>
             <h3>Διάθεση</h3>
             <p className="kpi-value">{formatValue(snapshot?.emotion_label)}</p>
             <span className="kpi-caption">Κυρίαρχη κατάσταση</span>
           </article>
           <article className="panel metric">
+            <div className="kpi-icon-wrap"><Icon d={ICONS.clock} size={22} /></div>
             <h3>Ενημέρωση</h3>
             <p className="kpi-value" style={{ fontSize: '1.1rem' }}>
               {snapshot?.last_updated
@@ -496,10 +536,11 @@ export default function DashboardView({
           </article>
 
           <article className="panel bento feature-panel">
-            <h2>Δείκτες Ευεξίας</h2>
+            <h2><Icon d={ICONS.chart} size={20} />Δείκτες Ευεξίας</h2>
             <div className="cards-list">
-              {FEATURE_CARD_ORDER.map(([key, label]) => (
+              {FEATURE_CARD_ORDER.map(([key, label, iconKey]) => (
                 <div key={key} className="card-pill">
+                  {iconKey && ICONS[iconKey] && <Icon d={ICONS[iconKey]} size={14} />}
                   <span>{label}</span>
                   <strong>
                     {key.includes('_100') || key === 'meds_tracker' || key === 'physio_engagement' || key === 'social_connection'
@@ -510,19 +551,19 @@ export default function DashboardView({
                   </strong>
                 </div>
               ))}
-              <div className="card-pill"><span>Άρθρωση φωνής</span><strong>{formatValue(latestBiomarkers.voice_articulation_blur)}</strong></div>
-              <div className="card-pill"><span>Εύρεση λέξεων</span><strong>{formatValue(latestBiomarkers.voice_word_finding)}</strong></div>
-              <div className="card-pill"><span>Παύσεις αναπνοής</span><strong>{formatValue(latestBiomarkers.voice_breath_pauses)}</strong></div>
-              <div className="card-pill"><span>Τόνος φωνής</span><strong>{formatValue(latestBiomarkers.prosody_stress)}</strong></div>
+              <div className="card-pill"><Icon d={ICONS.mic} size={14} /><span>Άρθρωση φωνής</span><strong>{formatValue(latestBiomarkers.voice_articulation_blur)}</strong></div>
+              <div className="card-pill"><Icon d={ICONS.brain} size={14} /><span>Εύρεση λέξεων</span><strong>{formatValue(latestBiomarkers.voice_word_finding)}</strong></div>
+              <div className="card-pill"><Icon d={ICONS.activity} size={14} /><span>Παύσεις αναπνοής</span><strong>{formatValue(latestBiomarkers.voice_breath_pauses)}</strong></div>
+              <div className="card-pill"><Icon d={ICONS.mic} size={14} /><span>Τόνος φωνής</span><strong>{formatValue(latestBiomarkers.prosody_stress)}</strong></div>
             </div>
           </article>
         </section>
 
         {/* Alerts */}
         <article className="panel panel-inner">
-          <h2 style={{ marginBottom: '14px' }}>Ειδοποιήσεις</h2>
+          <h2 style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}><Icon d={ICONS.bell} size={20} />Ειδοποιήσεις</h2>
           {activeAlerts.length === 0 ? (
-            <p className="subtext">Δεν υπάρχουν ενεργές ειδοποιήσεις. Όλα καλά! 🌿</p>
+            <p className="subtext">Δεν υπάρχουν ενεργές ειδοποιήσεις.</p>
           ) : (
             <ul className="alert-list">
               {activeAlerts.map((alert, index) => (
