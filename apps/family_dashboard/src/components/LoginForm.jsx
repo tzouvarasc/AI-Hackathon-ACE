@@ -74,18 +74,38 @@ export default function LoginForm({ onLogin, onSignup, loading, error }) {
     <div className="auth-root">
       <div className="auth-layout">
         <section className="auth-media">
-          <div className="auth-media-frame">
-            <img src={logoImg} alt="Thalpo" className="auth-media-logo" />
-            <div className="auth-media-grid" aria-hidden="true">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <span key={i} />
-              ))}
+          <div className="auth-brand-block">
+            <div className="auth-rings" aria-hidden="true">
+              <span className="ring ring-1" />
+              <span className="ring ring-2" />
+              <span className="ring ring-3" />
             </div>
+            <img src={logoImg} alt="Thalpo" className="auth-media-logo" />
           </div>
+
           <div className="auth-media-caption">
             <h2>Thalpo</h2>
             <p>Voice that warms.</p>
           </div>
+
+          <ul className="auth-features">
+            <li>
+              <span className="feat-icon">🎙️</span>
+              <span>Φωνητική επικοινωνία με AI</span>
+            </li>
+            <li>
+              <span className="feat-icon">🫂</span>
+              <span>Φροντίδα ηλικιωμένων</span>
+            </li>
+            <li>
+              <span className="feat-icon">👨‍👩‍👧</span>
+              <span>Σύνδεση οικογένειας</span>
+            </li>
+            <li>
+              <span className="feat-icon">📊</span>
+              <span>Dashboard παρακολούθησης</span>
+            </li>
+          </ul>
         </section>
 
         <section className="auth-panel">
