@@ -183,6 +183,14 @@ async def mac_opening_greeting(request: MacGreetingRequest) -> dict[str, str | i
     }
 
 
+@app.get("/v1/logo.png")
+async def get_logo() -> FileResponse:
+    logo_path = Path(__file__).parent / "logo.png"
+    if not logo_path.is_file():
+        raise HTTPException(status_code=404, detail="Logo not found")
+    return FileResponse(path=logo_path, media_type="image/png")
+
+
 @app.get("/v1/audio/{filename}")
 async def get_audio(filename: str) -> FileResponse:
     audio_root = Path(settings.tts_output_dir).resolve()
