@@ -1,213 +1,198 @@
-import { useState } from 'react'
-import logoImg from '../assets/logo.png'
+import { useMemo, useState } from 'react'
 
-/* Simple person-outline SVG icon (matches mockup) */
-function PersonIcon() {
+function ThalpoMark() {
   return (
-    <svg viewBox="0 0 64 64" width="44" height="44" fill="none">
-      <circle cx="32" cy="22" r="12" stroke="#FDF0D5" strokeWidth="2.5" />
+    <svg viewBox="0 0 140 140" className="thalpo-mark" role="img" aria-label="Λογότυπο Thalpo">
+      <circle cx="70" cy="70" r="68" fill="#a41623" />
       <path
-        d="M10 56c0-12.15 9.85-22 22-22s22 9.85 22 22"
-        stroke="#FDF0D5"
-        strokeWidth="2.5"
+        d="M28 92c10-16 22-22 35-20 8 1 14 7 20 16"
+        fill="none"
+        stroke="#fdf0d5"
+        strokeWidth="2"
         strokeLinecap="round"
       />
+      <path
+        d="M40 74c2-12 11-21 22-24 11-4 22 1 28 10"
+        fill="none"
+        stroke="#fdf0d5"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M77 37l9 7m-14 6l11 4m-2 10l10 0m-11 10l9-3"
+        fill="none"
+        stroke="#fdf0d5"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <text x="26" y="28" fill="#fdf0d5" fontSize="15" fontWeight="600">thalpo</text>
     </svg>
   )
 }
 
+function PhoneIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="field-icon" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <rect x="5" y="2" width="14" height="20" rx="3" />
+      <circle cx="12" cy="17" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+function UserIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="field-icon" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <circle cx="12" cy="7" r="4" />
+      <path d="M4 20c1.8-4.4 5.1-6.5 8-6.5s6.2 2.1 8 6.5" />
+    </svg>
+  )
+}
+
+function getInitials(name) {
+  if (!name) return '?'
+  return name
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+}
+
+const AVATAR_COLORS = [
+  ['#a41623', '#fdf0d5'],
+  ['#003049', '#669bbc'],
+  ['#669bbc', '#003049'],
+  ['#780000', '#fdf0d5'],
+  ['#d97706', '#1a2c44'],
+]
+
 export default function ElderSelector({
   profile,
   elders,
+  selectedId,
   onSelect,
   onAdd,
   onRemove,
   onLogout,
 }) {
-  const [showForm, setShowForm] = useState(false)
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
+  const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
-  const [gender, setGender] = useState('')
+  const canAdd = useMemo(() => name.trim() && phone.trim(), [name, phone])
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    if (!firstName.trim() || !lastName.trim() || !phone.trim() || !gender)
-      return
-    const fullName = `${firstName.trim()} ${lastName.trim()}`
-    onAdd({
-      name: fullName,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      phone: phone.trim(),
-      gender,
-      elderlyId: phone.trim().replace(/\D/g, ''),
-    })
-    setFirstName('')
-    setLastName('')
+  const submitAdd = (event) => {
+    event.preventDefault()
+    if (!canAdd) return
+    onAdd({ name: name.trim(), elderlyId: phone.trim() })
+    setName('')
     setPhone('')
-    setGender('')
-    setShowForm(false)
-  }
-
-  const handleCancel = () => {
-    setFirstName('')
-    setLastName('')
-    setPhone('')
-    setGender('')
-    setShowForm(false)
   }
 
   return (
-    <div className="es-shell">
-      {/* ── Header ── */}
-      <header className="es-header">
-        <div className="es-brand">
-          <img src={logoImg} alt="Thalpo" className="es-logo" />
-          <span className="es-brand-name">Thalpo</span>
-        </div>
+    <div className="selector-shell">
+      {/* decorative blobs */}
+      <div className="selector-blob selector-blob-1" aria-hidden="true" />
+      <div className="selector-blob selector-blob-2" aria-hidden="true" />
 
-        <button className="es-signout" onClick={onLogout}>
-          Sign Out
-        </button>
+      {/* ── header ── */}
+      <header className="selector-header">
+        <div className="selector-brand">
+          <ThalpoMark />
+          <div className="selector-brand-text">
+            <h1>Καλωσήρθες, <span className="brand-accent">{profile?.display_name || 'Φροντιστή'}</span>!</h1>
+            <p>Επίλεξε ηλικιωμένο για να δεις κλινική εικόνα, τάσεις και ειδοποιήσεις.</p>
+          </div>
+        </div>
+        <div className="selector-header-actions">
+          <span className="elder-count-badge">{elders.length} ηλικιωμένοι</span>
+          <button className="signout-pill" onClick={onLogout}>Αποσύνδεση</button>
+        </div>
       </header>
 
-      {/* ── Main ── */}
-      <main className="es-main">
-        <div className="es-intro">
-          <h2 className="es-welcome">Welcome!</h2>
-          <p className="es-subtitle">Select dashboard</p>
-        </div>
+      {/* ── divider ── */}
+      <div className="selector-section-label">
+        <span>Ηλικιωμένοι σου</span>
+        <div className="section-line" />
+      </div>
 
-        {/* Elder cards */}
-        <div className="es-grid">
-          {elders.map((elder) => (
+      {/* ── elder cards ── */}
+      <section className="elder-card-grid">
+        {elders.map((elder, idx) => {
+          const [bg, fg] = AVATAR_COLORS[idx % AVATAR_COLORS.length]
+          const isActive = selectedId === elder.id
+          return (
             <div
               key={elder.id}
-              className="es-card"
-              onClick={() => onSelect(elder)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && onSelect(elder)}
+              className={`elder-select-card ${isActive ? 'active' : ''}`}
             >
-              <button
-                className="es-card-remove"
-                title="Remove"
-                onClick={(ev) => {
-                  ev.stopPropagation()
-                  if (window.confirm(`Remove "${elder.name}"?`))
-                    onRemove(elder.id)
-                }}
-              >
-                ✕
+              <button type="button" className="elder-main-hit" onClick={() => onSelect(elder)}>
+                <span
+                  className="elder-avatar-initials"
+                  style={{ background: bg, color: fg }}
+                >
+                  {getInitials(elder.name || elder.label || elder.elderlyId)}
+                </span>
+                <div className="elder-card-body">
+                  <span className="elder-name">{elder.name || elder.label || elder.elderlyId}</span>
+                  <span className="elder-sub">{elder.elderlyId}</span>
+                </div>
+                <span className={`elder-status-dot ${isActive ? 'active' : ''}`} />
               </button>
-              <div className="es-avatar">
-                <PersonIcon />
-              </div>
-              <span className="es-card-name">{elder.name}</span>
+              {elders.length > 1 ? (
+                <button
+                  type="button"
+                  className="elder-remove"
+                  onClick={() => onRemove(elder.id)}
+                  aria-label={`Διαγραφή ${elder.name || elder.elderlyId}`}
+                >
+                  ✕
+                </button>
+              ) : null}
             </div>
-          ))}
+          )
+        })}
+      </section>
 
-          {/* Add card */}
-          {!showForm && (
-            <div
-              className="es-card es-add-card"
-              onClick={() => setShowForm(true)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && setShowForm(true)}
-            >
-              <div className="es-avatar es-add-icon">＋</div>
-              <span className="es-card-name">Προσθήκη</span>
+      {/* ── add elder ── */}
+      <div className="selector-section-label" style={{ marginTop: 40 }}>
+        <span>Προσθήκη ηλικιωμένου</span>
+        <div className="section-line" />
+      </div>
+
+      <section className="elder-add-panel">
+        <form className="elder-add-form" onSubmit={submitAdd}>
+          <label className="add-field-label">
+            <span>Ονοματεπώνυμο</span>
+            <div className="add-input-wrap">
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="π.χ. Μαρία Γεωργίου"
+              />
+              <UserIcon />
             </div>
-          )}
-        </div>
+          </label>
 
-        {/* Add form */}
-        {showForm && (
-          <form className="es-add-form" onSubmit={handleSubmit}>
-            <h3>Νέος ηλικιωμένος</h3>
-
-            <div className="es-gender-row">
-              <button
-                type="button"
-                className={`es-gender-btn${gender === 'male' ? ' selected' : ''}`}
-                onClick={() => setGender('male')}
-              >
-                👴 Άνδρας
-              </button>
-              <button
-                type="button"
-                className={`es-gender-btn${gender === 'female' ? ' selected' : ''}`}
-                onClick={() => setGender('female')}
-              >
-                👵 Γυναίκα
-              </button>
-            </div>
-
-            <div className="es-form-row">
-              <label>
-                Όνομα *
-                <input
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="π.χ. Γιώργης"
-                  required
-                  autoFocus
-                />
-              </label>
-              <label>
-                Επώνυμο *
-                <input
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  placeholder="π.χ. Παπαδόπουλος"
-                  required
-                />
-              </label>
-            </div>
-
-            <label>
-              Τηλέφωνο *
+          <label className="add-field-label">
+            <span>Τηλέφωνο</span>
+            <div className="add-input-wrap">
               <input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="π.χ. 6912345678"
+                placeholder="π.χ. +30 697 000 0000"
                 type="tel"
-                required
               />
-            </label>
-
-            <div className="es-form-actions">
-              <button
-                type="submit"
-                disabled={!gender || !firstName || !lastName || !phone}
-              >
-                Προσθήκη →
-              </button>
-              <button
-                type="button"
-                className="secondary"
-                onClick={handleCancel}
-              >
-                Ακύρωση
-              </button>
+              <PhoneIcon />
             </div>
-          </form>
-        )}
+          </label>
 
-        {/* Empty state */}
-        {elders.length === 0 && !showForm && (
-          <div style={{ textAlign: 'center', marginTop: '40px' }}>
-            <p style={{ fontSize: '15px', color: 'var(--text-mid)', marginBottom: '8px' }}>
-              Δεν έχετε προσθέσει ακόμη κανέναν ηλικιωμένο.
-            </p>
-            <p style={{ fontSize: '13.5px', color: 'var(--text-muted)' }}>
-              Κάντε κλικ στο <strong>＋</strong> παραπάνω για να ξεκινήσετε.
-            </p>
-          </div>
-        )}
-      </main>
+          <button type="submit" className="add-submit-btn" disabled={!canAdd}>
+            <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18" aria-hidden="true">
+              <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
+            </svg>
+            Προσθήκη
+          </button>
+        </form>
+      </section>
     </div>
   )
 }

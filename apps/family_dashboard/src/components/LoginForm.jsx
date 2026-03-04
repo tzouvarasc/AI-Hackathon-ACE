@@ -88,24 +88,6 @@ export default function LoginForm({ onLogin, onSignup, loading, error }) {
             <p>Voice that warms.</p>
           </div>
 
-          <ul className="auth-features">
-            <li>
-              <span className="feat-icon">🎙️</span>
-              <span>Φωνητική επικοινωνία με AI</span>
-            </li>
-            <li>
-              <span className="feat-icon">🫂</span>
-              <span>Φροντίδα ηλικιωμένων</span>
-            </li>
-            <li>
-              <span className="feat-icon">👨‍👩‍👧</span>
-              <span>Σύνδεση οικογένειας</span>
-            </li>
-            <li>
-              <span className="feat-icon">📊</span>
-              <span>Dashboard παρακολούθησης</span>
-            </li>
-          </ul>
         </section>
 
         <section className="auth-panel">
@@ -144,7 +126,7 @@ export default function LoginForm({ onLogin, onSignup, loading, error }) {
                     <input
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      placeholder="π.χ. areti"
+                      placeholder="π.χ. maria_p"
                       autoComplete="username"
                     />
                     <UserIcon />
@@ -186,7 +168,7 @@ export default function LoginForm({ onLogin, onSignup, loading, error }) {
                     <input
                       value={suName}
                       onChange={(e) => setSuName(e.target.value)}
-                      placeholder="π.χ. Αρετή Κυρπίτσα"
+                      placeholder="π.χ. Μαρία Παπαδοπούλου"
                     />
                     <UserIcon />
                   </div>
@@ -198,7 +180,7 @@ export default function LoginForm({ onLogin, onSignup, loading, error }) {
                     <input
                       value={suUser}
                       onChange={(e) => setSuUser(e.target.value)}
-                      placeholder="π.χ. areti"
+                      placeholder="π.χ. maria_p"
                       required
                     />
                     <UserIcon />
@@ -211,7 +193,7 @@ export default function LoginForm({ onLogin, onSignup, loading, error }) {
                     <input
                       value={suEmail}
                       onChange={(e) => setSuEmail(e.target.value)}
-                      placeholder="π.χ. areti@email.com"
+                      placeholder="π.χ. maria@email.com"
                       type="email"
                     />
                     <MailIcon />
