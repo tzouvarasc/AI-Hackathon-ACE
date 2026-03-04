@@ -1,34 +1,5 @@
 import { useMemo, useState } from 'react'
-
-function ThalpoMark() {
-  return (
-    <svg viewBox="0 0 140 140" className="thalpo-mark" role="img" aria-label="Λογότυπο Thalpo">
-      <circle cx="70" cy="70" r="68" fill="#a41623" />
-      <path
-        d="M28 92c10-16 22-22 35-20 8 1 14 7 20 16"
-        fill="none"
-        stroke="#fdf0d5"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M40 74c2-12 11-21 22-24 11-4 22 1 28 10"
-        fill="none"
-        stroke="#fdf0d5"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M77 37l9 7m-14 6l11 4m-2 10l10 0m-11 10l9-3"
-        fill="none"
-        stroke="#fdf0d5"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-      <text x="26" y="28" fill="#fdf0d5" fontSize="15" fontWeight="600">thalpo</text>
-    </svg>
-  )
-}
+import logoImg from '../assets/logo.png'
 
 function PhoneIcon() {
   return (
@@ -96,7 +67,7 @@ export default function ElderSelector({
       {/* ── header ── */}
       <header className="selector-header">
         <div className="selector-brand">
-          <ThalpoMark />
+          <img src={logoImg} alt="Thalpo" className="selector-logo-img" />
           <div className="selector-brand-text">
             <h1>Καλωσήρθες, <span className="brand-accent">{profile?.display_name || 'Φροντιστή'}</span>!</h1>
             <p>Επίλεξε ηλικιωμένο για να δεις κλινική εικόνα, τάσεις και ειδοποιήσεις.</p>
