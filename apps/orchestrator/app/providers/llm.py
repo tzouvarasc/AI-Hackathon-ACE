@@ -62,17 +62,12 @@ class LLMProvider:
 
         payload = {
             "model": self.model,
-            "input": [
-                {
-                    "role": "system",
-                    "content": [{"type": "input_text", "text": system_prompt}],
-                },
-                {
-                    "role": "user",
-                    "content": [{"type": "input_text", "text": transcript}],
-                },
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": transcript},
             ],
             "temperature": 0.35,
+            "max_tokens": 220,
         }
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -82,14 +77,16 @@ class LLMProvider:
         try:
             async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
                 response = await client.post(
-                    "https://api.openai.com/v1/responses",
+                    "https://api.openai.com/v1/chat/completions",
                     json=payload,
                     headers=headers,
                 )
                 response.raise_for_status()
                 data = response.json()
 
-            reply = (data.get("output_text") or "").strip()
+            reply = (
+                data.get("choices", [{}])[0].get("message", {}).get("content", "") or ""
+            ).strip()
             if not reply:
                 reply = self._fallback_reply(transcript, locale)
             elapsed_ms = int((time.perf_counter() - start) * 1000)

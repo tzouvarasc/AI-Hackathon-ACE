@@ -121,6 +121,7 @@ class AnalysisRequest(BaseModel):
     transcript: str
     audio_url: str | None = None
     audio_features: dict[str, float] = Field(default_factory=dict)
+    history: list[str] = Field(default_factory=list)  # recent prior transcripts for context
 
 
 class AnalysisResult(BaseModel):

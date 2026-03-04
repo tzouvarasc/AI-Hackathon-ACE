@@ -24,6 +24,7 @@ class AnalysisService:
         base = score_analysis(
             transcript=request.transcript,
             audio_features=request.audio_features,
+            history=request.history or [],
         )
 
         hume_result = await self.hume.analyze(request.transcript, request.audio_url)

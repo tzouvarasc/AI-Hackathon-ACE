@@ -4,7 +4,15 @@ from shared.contracts.schemas import AlertDecision, AlertEvaluationRequest, Aler
 
 CRITICAL_FLAGS = {"acute_distress", "fall_risk"}
 WARNING_FLAGS = {"missed_meds", "cognitive_decline"}
-EMERGENCY_KEYWORDS = {"help", "panic", "emergency", "cannot breathe", "sos"}
+EMERGENCY_KEYWORDS = {
+    # English
+    "help", "panic", "emergency", "cannot breathe", "sos",
+    # Greek stems (match inflected forms)
+    "βοηθ",   # βοήθεια, βοήθησέ με
+    "πανικ",  # πανικός
+    "επείγ",  # επείγον
+    "ανάσ",   # αναπνοή / αναπνέω
+}
 
 
 def evaluate_alert(request: AlertEvaluationRequest) -> AlertDecision:

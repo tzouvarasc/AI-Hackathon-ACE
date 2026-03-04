@@ -8,120 +8,210 @@ def build_mac_voice_chat_html(*, server_stt_enabled: bool) -> str:
     <meta charset=\"utf-8\" />
     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
     <title>Thalpo Voice Chat (Greek)</title>
+    <link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@400;600;700&display=swap\" />
     <style>
       :root {
-        --bg: #f4f6fb;
-        --card: #ffffff;
-        --ink: #1c2433;
-        --muted: #5a6474;
-        --line: #d9dfeb;
-        --primary: #0d5bd6;
+        --bg:         #f5e8c4;
+        --bg-soft:    #e8d49a;
+        --panel:      #fffef8;
+        --panel-soft: #fdf8ec;
+        --line:       rgba(60,30,10,0.10);
+        --line-warm:  rgba(140,26,26,0.18);
+        --text:       #261a0e;
+        --text-mid:   #5c4d3c;
+        --text-muted: #9a8c7c;
+        --brand-red:  #8c1a1a;
+        --amber:      #c47c3e;
+        --amber-soft: rgba(196,124,62,0.12);
+        --green:      #4e8c6e;
+        --shadow:     0 4px 24px rgba(38,26,14,0.09);
+        --shadow-md:  0 8px 32px rgba(38,26,14,0.13);
+        --radius:     18px;
+        --radius-md:  12px;
+        --radius-sm:  9px;
       }
-      * { box-sizing: border-box; }
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
       body {
-        margin: 0;
-        background: radial-gradient(circle at 15% 10%, #dce8ff 0%, var(--bg) 35%, #eef2fb 100%);
-        color: var(--ink);
-        font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-family: 'Source Sans 3', system-ui, sans-serif;
+        font-size: 15px; line-height: 1.6;
+        color: var(--text);
+        background: var(--bg);
+        min-height: 100vh;
+        padding: 28px 16px 64px;
       }
-      .wrap {
-        max-width: 920px;
-        margin: 28px auto;
-        padding: 0 16px;
+      h1, h2, h3 { font-family: 'Playfair Display', Georgia, serif; }
+
+      .wrap { max-width: 720px; margin: 0 auto; display: grid; gap: 14px; }
+
+      /* ── Header ── */
+      .thalpo-header {
+        display: flex; align-items: center; gap: 16px;
+        background: var(--panel); border: 1px solid var(--line);
+        border-radius: var(--radius); box-shadow: var(--shadow);
+        padding: 20px 24px;
       }
-      .card {
-        background: var(--card);
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        box-shadow: 0 10px 28px rgba(23, 37, 74, 0.08);
-        padding: 16px;
+      .thalpo-logo-wrap {
+        width: 54px; height: 54px; border-radius: 50%; flex-shrink: 0;
+        background: url('/v1/logo.png') center/140% no-repeat;
+        box-shadow: 0 4px 14px rgba(140,26,26,0.30);
       }
-      h1 { margin: 0 0 10px; font-size: 24px; }
-      p { margin: 0 0 12px; color: var(--muted); }
-      .row {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-bottom: 12px;
+      .thalpo-header h1 { font-size: 1.6rem; color: var(--brand-red); margin-bottom: 2px; }
+      .thalpo-header p  { font-size: 13.5px; color: var(--text-muted); }
+
+      /* ── Status bar ── */
+      .status-bar {
+        display: flex; align-items: center; gap: 9px;
+        background: var(--panel); border: 1px solid var(--line);
+        border-radius: var(--radius-sm); padding: 10px 16px;
+        font-size: 13.5px; color: var(--text-muted);
       }
+      .status-dot {
+        width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+        background: var(--text-muted);
+      }
+
+      /* ── Controls ── */
+      .controls-card {
+        background: var(--panel); border: 1px solid var(--line);
+        border-radius: var(--radius); box-shadow: var(--shadow);
+        padding: 22px 24px; display: grid; gap: 13px;
+      }
+      .call-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+      .text-row  { display: flex; gap: 8px; }
+
       button {
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        background: #fff;
-        color: var(--ink);
-        padding: 9px 14px;
-        font-weight: 600;
-        cursor: pointer;
+        font-family: 'Source Sans 3', sans-serif;
+        font-weight: 700; font-size: 14px;
+        border: none; border-radius: var(--radius-sm);
+        padding: 11px 20px; cursor: pointer;
+        transition: opacity 0.15s, transform 0.1s;
+        line-height: 1;
       }
-      button.primary {
-        background: var(--primary);
-        border-color: var(--primary);
+      button:hover:not(:disabled) { opacity: 0.86; transform: translateY(-1px); }
+      button:active:not(:disabled) { transform: none; }
+      button:disabled { opacity: 0.38; cursor: not-allowed; transform: none; }
+
+      #startMic {
+        background: linear-gradient(135deg, var(--brand-red), #6b1414);
+        color: #fff; padding: 13px 28px; font-size: 15px;
+        box-shadow: 0 3px 14px rgba(140,26,26,0.26);
+      }
+      #stopMic {
+        background: var(--amber-soft);
+        border: 1.5px solid var(--line-warm);
+        color: var(--brand-red);
+      }
+      #newSession {
+        background: transparent;
+        border: 1.5px solid var(--line);
+        color: var(--text-muted);
+      }
+      #sendText {
+        background: linear-gradient(135deg, var(--amber), #a06028);
         color: #fff;
+        box-shadow: 0 2px 10px rgba(196,124,62,0.22);
+        padding: 11px 20px; white-space: nowrap;
       }
-      button:disabled { opacity: 0.55; cursor: not-allowed; }
+
       input[type=\"text\"] {
-        flex: 1;
-        min-width: 220px;
+        flex: 1; min-width: 0;
+        background: var(--panel-soft);
         border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 10px 12px;
-        font-size: 16px;
+        border-radius: var(--radius-sm);
+        padding: 11px 14px;
+        font-family: inherit; font-size: 14.5px; color: var(--text);
+        transition: border-color 0.2s, box-shadow 0.2s;
       }
-      .meta {
-        font-size: 13px;
-        color: var(--muted);
-        margin: 0 0 10px;
+      input[type=\"text\"]:focus {
+        outline: none;
+        border-color: var(--amber);
+        box-shadow: 0 0 0 3px rgba(196,124,62,0.14);
       }
-      .log {
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 10px;
-        min-height: 340px;
-        max-height: 52vh;
-        overflow: auto;
-        background: #fbfcff;
+      input[type=\"text\"]::placeholder { color: var(--text-muted); }
+
+      /* ── Conversation log ── */
+      .log-card {
+        background: var(--panel); border: 1px solid var(--line);
+        border-radius: var(--radius); box-shadow: var(--shadow);
+        overflow: hidden;
       }
-      .msg { margin: 0 0 10px; padding: 8px 10px; border-radius: 10px; }
-      .msg.user { background: #edf4ff; }
-      .msg.bot { background: #f7f2ff; }
-      .msg.system { background: #eef7f2; color: #2f5f46; }
+      .log-label {
+        padding: 12px 20px 10px;
+        font-size: 10.5px; font-weight: 700; letter-spacing: 0.09em;
+        text-transform: uppercase; color: var(--text-muted);
+        border-bottom: 1px solid var(--line);
+      }
+      #log {
+        padding: 14px 16px;
+        min-height: 320px; max-height: 52vh;
+        overflow-y: auto;
+        display: grid; gap: 8px; align-content: start;
+        background: var(--panel-soft);
+      }
+      .msg {
+        padding: 11px 14px; border-radius: var(--radius-sm);
+        font-size: 14px; line-height: 1.6;
+      }
+      .msg.user {
+        background: rgba(196,124,62,0.10);
+        border-left: 3px solid var(--amber);
+      }
+      .msg.bot {
+        background: rgba(140,26,26,0.06);
+        border-left: 3px solid var(--brand-red);
+      }
+      .msg.system {
+        background: rgba(78,140,110,0.08);
+        color: #2f5f46; font-size: 13px; font-style: italic;
+        border-left: 3px solid var(--green);
+      }
       .label { font-weight: 700; margin-right: 6px; }
+      .msg.user .label { color: var(--amber); }
+      .msg.bot  .label { color: var(--brand-red); }
+
+      /* ── Footer note ── */
       .warn {
-        margin-top: 10px;
-        color: #8b3a00;
-        background: #fff6ef;
-        border: 1px solid #ffd9bf;
-        border-radius: 10px;
-        padding: 8px 10px;
-        font-size: 13px;
+        text-align: center; font-size: 12.5px;
+        color: var(--text-muted); font-style: italic;
+        padding: 4px 0;
       }
     </style>
   </head>
   <body>
     <div class=\"wrap\">
-      <div class=\"card\">
-        <h1>Thalpo Greek Voice Chat</h1>
-        <p>Μιλήστε στα Ελληνικά. Πατήστε <strong>Έναρξη κλήσης</strong> μία φορά για συνεχή συνομιλία και <strong>Τερματισμός κλήσης</strong> όταν θέλετε να κλείσετε.</p>
 
-        <div class=\"meta\" id=\"meta\">Κατάσταση: αρχικοποίηση...</div>
+      <div class=\"thalpo-header\">
+        <div class=\"thalpo-logo-wrap\" role=\"img\" aria-label=\"Thalpo\"></div>
+        <div>
+          <h1>Thalpo</h1>
+          <p>Φωνητική συνομιλία · Ελληνικά</p>
+        </div>
+      </div>
 
-        <div class=\"row\">
-          <button id=\"startMic\" class=\"primary\">Έναρξη κλήσης</button>
+      <div class=\"status-bar\">
+        <span class=\"status-dot\"></span>
+        <span id=\"meta\">Κατάσταση: αρχικοποίηση…</span>
+      </div>
+
+      <div class=\"controls-card\">
+        <div class=\"call-row\">
+          <button id=\"startMic\">📞 Έναρξη κλήσης</button>
           <button id=\"stopMic\">Τερματισμός κλήσης</button>
           <button id=\"newSession\">Νέα συνεδρία</button>
         </div>
-
-        <div class=\"row\">
-          <input id=\"textInput\" type=\"text\" placeholder=\"Ή γράψτε εδώ και πατήστε Enter\" />
+        <div class=\"text-row\">
+          <input id=\"textInput\" type=\"text\" placeholder=\"Ή γράψτε εδώ και πατήστε Enter…\" />
           <button id=\"sendText\">Αποστολή</button>
         </div>
-
-        <div id=\"log\" class=\"log\"></div>
-
-        <div class=\"warn\">
-          Λειτουργία κλήσης: Browser STT (Safari/Chrome). Server STT ενεργοποιείται μόνο αν είναι πλήρως ρυθμισμένο.
-        </div>
       </div>
+
+      <div class=\"log-card\">
+        <div class=\"log-label\">Συνομιλία</div>
+        <div id=\"log\" class=\"log\"></div>
+      </div>
+
+      <p class=\"warn\">Browser STT (Safari/Chrome) · Server STT ενεργοποιείται αυτόματα αν είναι ρυθμισμένος.</p>
+
     </div>
 
     <script>
@@ -305,6 +395,44 @@ def build_mac_voice_chat_html(*, server_stt_enabled: bool) -> str:
 
       function normalizeTranscript(text) {
         return String(text || '').toLowerCase().replace(/\s+/g, ' ').trim();
+      }
+
+      function normalizeIntentText(text) {
+        return normalizeTranscript(text)
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+      }
+
+      function isExitIntent(text) {
+        const norm = normalizeIntentText(text);
+        if (!norm) return false;
+
+        if (norm.includes('με λενε') && (norm.includes('γεια') || norm.includes('καλημερα'))) {
+          return false;
+        }
+
+        const explicitPhrases = [
+          'δεν θελω αλλο',
+          'δεν θελω να συνεχισ',
+          'κλεισε την κληση',
+          'τερματισ',
+          'σταματα',
+          'τελος κλησης',
+        ];
+        if (explicitPhrases.some((phrase) => norm.includes(phrase))) {
+          return true;
+        }
+
+        const goodbyeTokens = ['αντιο', 'bye', 'goodbye', 'τα λεμε'];
+        const tokenCount = norm.split(/\s+/).filter(Boolean).length;
+        if (goodbyeTokens.some((token) => norm.includes(token)) && tokenCount <= 6) {
+          return true;
+        }
+
+        if (norm === 'γεια' || norm === 'οχι γεια' || norm === 'αντιο σας') {
+          return true;
+        }
+        return false;
       }
 
       function tokenizeTranscript(text) {
@@ -517,6 +645,32 @@ def build_mac_voice_chat_html(*, server_stt_enabled: bool) -> str:
 
         await ensureSession();
         addMessage('user', 'Εσύ:', trimmed);
+
+        if (callModeActive && isExitIntent(trimmed)) {
+          const closingText = 'Βεβαίως, κλείνω την κλήση τώρα. Να είστε καλά και τα λέμε σύντομα.';
+          addStage('Εντοπίστηκε πρόθεση τερματισμού από τον χρήστη.');
+          addMessage('bot', 'Thalpo:', closingText);
+          rememberAssistantUtterance(closingText);
+
+          pauseRecognitionForAudio = true;
+          if (recognition && isBrowserListening) {
+            try {
+              recognition.stop();
+            } catch (_) {
+              // no-op
+            }
+          }
+
+          const spoken = await speakWithBrowserTTS(closingText);
+          if (spoken) {
+            addStage('Ο αποχαιρετισμός ολοκληρώθηκε.');
+          } else {
+            addMessage('system', 'Audio:', 'Δεν ήταν δυνατή η αναπαραγωγή αποχαιρετισμού.');
+          }
+          await stopCallMode();
+          return;
+        }
+
         addStage('Στέλνω turn στο Orchestrator...');
 
         const payload = {
