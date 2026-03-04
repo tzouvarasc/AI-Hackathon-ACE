@@ -108,16 +108,14 @@ export default function ElderSelector({
                 </div>
                 <span className={`elder-status-dot ${isActive ? 'active' : ''}`} />
               </button>
-              {elders.length > 1 ? (
-                <button
-                  type="button"
-                  className="elder-remove"
-                  onClick={() => onRemove(elder.id)}
-                  aria-label={`Διαγραφή ${elder.name || elder.elderlyId}`}
-                >
-                  ✕
-                </button>
-              ) : null}
+              <button
+                type="button"
+                className="elder-remove"
+                onClick={() => onRemove(elder.id)}
+                aria-label={`Διαγραφή ${elder.name || elder.elderlyId}`}
+              >
+                ✕
+              </button>
             </div>
           )
         })}
