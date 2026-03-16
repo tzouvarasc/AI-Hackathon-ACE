@@ -74,7 +74,7 @@ class OrchestratorPipeline:
             redis_url=settings.redis_url,
             stream_name=settings.redis_stream_turns,
         )
-        self.sessions: dict[str, dict[str, str]] = {}
+        self.sessions: dict[str, dict] = {}
 
     def ensure_session(
         self,
@@ -89,6 +89,7 @@ class OrchestratorPipeline:
             "user_id": user_id,
             "channel": channel,
             "locale": locale,
+            "history": [],  # list of recent user transcripts for context
         }
 
     async def start_session(self, request: SessionStartRequest) -> SessionStartResponse:
@@ -97,6 +98,7 @@ class OrchestratorPipeline:
             "user_id": request.user_id,
             "channel": request.channel.value,
             "locale": request.locale,
+            "history": [],
         }
         return SessionStartResponse(session_id=session_id)
 
@@ -209,6 +211,12 @@ class OrchestratorPipeline:
             audio_url=request.audio_url,
         )
         locale = session_info.get("locale", "el-GR")
+
+        # Append transcript to session history (keep last 5 turns for context).
+        session_history: list[str] = session_info.get("history", [])
+        session_history.append(transcript)
+        self.sessions[request.session_id]["history"] = session_history[-5:]
+
         assistant_text, llm_ms = await self.llm.generate_reply(transcript, locale=locale)
         audio_chunk_ref, tts_ms = await self.tts.synthesize(assistant_text, request.session_id)
 
@@ -230,6 +238,7 @@ class OrchestratorPipeline:
                 assistant_text=assistant_text,
                 audio_url=request.audio_url,
                 audio_features=request.audio_features,
+                history=session_history[:-1],  # prior turns only
             )
 
         total_ms = int((time.perf_counter() - start) * 1000)
@@ -255,49 +264,72 @@ class OrchestratorPipeline:
         assistant_text: str,
         audio_url: str | None,
         audio_features: dict[str, float],
+        history: list[str] | None = None,
     ) -> None:
-        analysis_request = AnalysisRequest(
-            session_id=session_id,
-            user_id=user_id,
-            transcript=transcript,
-            audio_url=audio_url,
-            audio_features=audio_features,
-        )
+        try:
+            analysis_request = AnalysisRequest(
+                session_id=session_id,
+                user_id=user_id,
+                transcript=transcript,
+                audio_url=audio_url,
+                audio_features=audio_features,
+                history=history or [],
+            )
 
-        analysis_body = await self._post_json(
-            f"{self.settings.analysis_engine_url}/v1/analyze",
-            analysis_request.model_dump(mode="json"),
-        )
-        if analysis_body is None:
-            return
+            analysis_body = await self._post_json(
+                f"{self.settings.analysis_engine_url}/v1/analyze",
+                analysis_request.model_dump(mode="json"),
+            )
+            if analysis_body is None:
+                print(
+                    f"[orchestrator][ERROR] Analysis returned None for session={session_id}. "
+                    "Caregiver alerts may be suppressed.",
+                    flush=True,
+                )
+                return
 
-        analysis_result = AnalysisResult(**analysis_body)
+            analysis_result = AnalysisResult(**analysis_body)
 
-        alert_request = AlertEvaluationRequest(
-            session_id=session_id,
-            user_id=user_id,
-            transcript=transcript,
-            analysis=analysis_result,
-        )
-        alert_body = await self._post_json(
-            f"{self.settings.alert_engine_url}/v1/alerts/evaluate",
-            alert_request.model_dump(mode="json"),
-        )
-        alert_result = AlertDecision(**alert_body) if alert_body else None
+            alert_request = AlertEvaluationRequest(
+                session_id=session_id,
+                user_id=user_id,
+                transcript=transcript,
+                analysis=analysis_result,
+            )
+            alert_body = await self._post_json(
+                f"{self.settings.alert_engine_url}/v1/alerts/evaluate",
+                alert_request.model_dump(mode="json"),
+            )
+            if alert_body is None:
+                print(
+                    f"[orchestrator][ERROR] Alert evaluation returned None for session={session_id}.",
+                    flush=True,
+                )
+            alert_result = AlertDecision(**alert_body) if alert_body else None
 
-        ingest_request = DashboardIngestRequest(
-            session_id=session_id,
-            user_id=user_id,
-            transcript=transcript,
-            assistant_text=assistant_text,
-            analysis=analysis_result,
-            alert=alert_result,
-        )
-        await self._post_json(
-            f"{self.settings.family_api_url}/v1/dashboard/{user_id}/ingest",
-            ingest_request.model_dump(mode="json"),
-            headers={"x-internal-token": self.settings.internal_service_token},
-        )
+            ingest_request = DashboardIngestRequest(
+                session_id=session_id,
+                user_id=user_id,
+                transcript=transcript,
+                assistant_text=assistant_text,
+                analysis=analysis_result,
+                alert=alert_result,
+            )
+            ingest_ok = await self._post_json(
+                f"{self.settings.family_api_url}/v1/dashboard/{user_id}/ingest",
+                ingest_request.model_dump(mode="json"),
+                headers={"x-internal-token": self.settings.internal_service_token},
+            )
+            if ingest_ok is None:
+                print(
+                    f"[orchestrator][ERROR] Dashboard ingest failed for user={user_id} session={session_id}.",
+                    flush=True,
+                )
+        except Exception as exc:
+            print(
+                f"[orchestrator][ERROR] run_parallel_analysis crashed for session={session_id}: {exc}",
+                flush=True,
+            )
 
     async def _post_json(
         self,
